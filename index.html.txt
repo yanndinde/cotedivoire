@@ -1,0 +1,261 @@
+import React, { useState, useEffect } from 'react';
+import { Trophy, RotateCcw, CheckCircle, XCircle, Clock } from 'lucide-react';
+
+const QuizCoteDivoire = () => {
+  const questions = [
+    {
+      question: "Quelle est la capitale économique de la Côte d'Ivoire ?",
+      options: ["Yamoussoukro", "Abidjan", "Bouaké", "San-Pédro"],
+      correct: 1
+    },
+    {
+      question: "En quelle année la Côte d'Ivoire a-t-elle obtenu son indépendance ?",
+      options: ["1958", "1960", "1962", "1965"],
+      correct: 1
+    },
+    {
+      question: "Quel est le plat national ivoirien à base de bananes plantains frites ?",
+      options: ["Garba", "Attiéké", "Alloco", "Foutou"],
+      correct: 2
+    },
+    {
+      question: "Qui est considéré comme le père de l'indépendance ivoirienne ?",
+      options: ["Félix Houphouët-Boigny", "Alassane Ouattara", "Laurent Gbagbo", "Henri Konan Bédié"],
+      correct: 0
+    },
+    {
+      question: "Quel artiste ivoirien a popularisé le Coupé-Décalé ?",
+      options: ["Alpha Blondy", "Tiken Jah Fakoly", "DJ Arafat", "Magic System"],
+      correct: 2
+    },
+    {
+      question: "Quelle est la plus grande basilique du monde située en Côte d'Ivoire ?",
+      options: ["Notre-Dame d'Abidjan", "Basilique de Yamoussoukro", "Cathédrale St-Paul", "Mosquée de Treichville"],
+      correct: 1
+    },
+    {
+      question: "Quel produit agricole fait de la Côte d'Ivoire le premier producteur mondial ?",
+      options: ["Le café", "Le coton", "Le cacao", "L'anacarde"],
+      correct: 2
+    },
+    {
+      question: "Comment appelle-t-on les bus de transport en commun à Abidjan ?",
+      options: ["Woro-woro", "Gbakas", "Taxis-brousse", "Sotra"],
+      correct: 1
+    },
+    {
+      question: "Quel joueur ivoirien a remporté le Ballon d'Or africain plusieurs fois ?",
+      options: ["Yaya Touré", "Salomon Kalou", "Didier Drogba", "Gervinho"],
+      correct: 0
+    },
+    {
+      question: "Quelle langue locale est la plus parlée en Côte d'Ivoire ?",
+      options: ["Le malinké", "Le baoulé", "Le bété", "Le dioula"],
+      correct: 3
+    }
+  ];
+
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showScore, setShowScore] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [answered, setAnswered] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(10);
+
+  // Sons avec Web Audio API
+  const playSound = (frequency, duration, type = 'correct') => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'correct') {
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    } else if (type === 'wrong') {
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sawtooth';
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    } else if (type === 'next') {
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    }
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  };
+
+  // Timer effect
+  useEffect(() => {
+    if (timeLeft === 0 && !answered) {
+      setAnswered(true);
+      setSelectedAnswer(null);
+      playSound(200, 0.3, 'wrong');
+    }
+
+    if (timeLeft > 0 && !answered) {
+      const timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [timeLeft, answered]);
+
+  const handleAnswerClick = (index) => {
+    if (answered) return;
+    
+    setSelectedAnswer(index);
+    setAnswered(true);
+    
+    if (index === questions[currentQuestion].correct) {
+      setScore(score + 1);
+      playSound(800, 0.2, 'correct');
+    } else {
+      playSound(200, 0.3, 'wrong');
+    }
+  };
+
+  const handleNextQuestion = () => {
+    playSound(600, 0.15, 'next');
+    
+    const nextQuestion = currentQuestion + 1;
+    if (nextQuestion < questions.length) {
+      setCurrentQuestion(nextQuestion);
+      setSelectedAnswer(null);
+      setAnswered(false);
+      setTimeLeft(10);
+    } else {
+      setShowScore(true);
+    }
+  };
+
+  const restartQuiz = () => {
+    setCurrentQuestion(0);
+    setScore(0);
+    setShowScore(false);
+    setSelectedAnswer(null);
+    setAnswered(false);
+    setTimeLeft(10);
+    playSound(600, 0.15, 'next');
+  };
+
+  const getScoreMessage = () => {
+    const percentage = (score / questions.length) * 100;
+    if (percentage === 100) return "Parfait ! Tu es un vrai expert de la CI ! 🎉";
+    if (percentage >= 80) return "Excellent ! Tu connais bien ton pays ! 👏";
+    if (percentage >= 60) return "Bien joué ! Pas mal du tout ! 😊";
+    if (percentage >= 40) return "C'est un bon début ! Continue d'apprendre ! 💪";
+    return "Il faut réviser un peu ! Mais c'est pas grave ! 📚";
+  };
+
+  if (showScore) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 via-white to-green-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <Trophy className="w-20 h-20 mx-auto text-yellow-500 mb-4" />
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Quiz terminé !</h2>
+          <div className="bg-gradient-to-r from-orange-500 to-green-600 text-white rounded-xl p-6 mb-4">
+            <p className="text-5xl font-bold mb-2">{score}/{questions.length}</p>
+            <p className="text-xl">Score final</p>
+          </div>
+          <p className="text-lg text-gray-700 mb-6">{getScoreMessage()}</p>
+          <button
+            onClick={restartQuiz}
+            className="bg-gradient-to-r from-orange-500 to-green-600 text-white px-8 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all"
+          >
+            <RotateCcw className="w-5 h-5" />
+            Rejouer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 via-white to-green-600 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-sm font-semibold text-gray-600">
+            Question {currentQuestion + 1}/{questions.length}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold transition-all ${
+              timeLeft <= 3 ? 'bg-red-500 text-white animate-pulse' : 'bg-orange-100 text-orange-600'
+            }`}>
+              <Clock className="w-4 h-4" />
+              {timeLeft}s
+            </div>
+            <div className="bg-gradient-to-r from-orange-500 to-green-600 text-white px-4 py-2 rounded-full font-bold">
+              Score: {score}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-2 bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-gradient-to-r from-orange-500 to-green-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
+          ></div>
+        </div>
+
+        <h2 className="text-2xl font-bold text-gray-800 mb-8 mt-6">
+          {questions[currentQuestion].question}
+        </h2>
+
+        <div className="space-y-3 mb-6">
+          {questions[currentQuestion].options.map((option, index) => {
+            const isCorrect = index === questions[currentQuestion].correct;
+            const isSelected = index === selectedAnswer;
+            
+            let buttonClass = "w-full p-4 rounded-xl text-left font-medium transition-all border-2 ";
+            
+            if (!answered) {
+              buttonClass += "border-gray-200 hover:border-orange-500 hover:bg-orange-50 cursor-pointer";
+            } else {
+              if (isCorrect) {
+                buttonClass += "border-green-500 bg-green-50 text-green-800";
+              } else if (isSelected && !isCorrect) {
+                buttonClass += "border-red-500 bg-red-50 text-red-800";
+              } else {
+                buttonClass += "border-gray-200 bg-gray-50 text-gray-500";
+              }
+            }
+
+            return (
+              <button
+                key={index}
+                onClick={() => handleAnswerClick(index)}
+                className={buttonClass}
+                disabled={answered}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{option}</span>
+                  {answered && isCorrect && <CheckCircle className="w-6 h-6 text-green-600" />}
+                  {answered && isSelected && !isCorrect && <XCircle className="w-6 h-6 text-red-600" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {answered && (
+          <button
+            onClick={handleNextQuestion}
+            className="w-full bg-gradient-to-r from-orange-500 to-green-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-all"
+          >
+            {currentQuestion + 1 === questions.length ? "Voir le résultat" : "Question suivante"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default QuizCoteDivoire;
